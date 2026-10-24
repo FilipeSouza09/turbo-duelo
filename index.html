@@ -1561,7 +1561,7 @@ $('#tpause').addEventListener('click',()=>{if(live())pause();});['#n1','#n2'].fo
 const PH=1/120;let last=0,acc=0,ft=16,resT=0;
 function frame(now){const dt=last?Math.min(.05,(now-last)/1000):1/60;last=now;
   if(screen==='garage'&&GA){renderGarage(dt);hx.setTransform(1,0,0,1,0,0);hx.clearRect(0,0,hudc.width,hudc.height);requestAnimationFrame(frame);return;}
-  if(race.state==='race'||race.state==='countdown'){acc+=dt;let n=0;while(acc>=PH&&n<12){stepRace(PH);acc-=PH;n++;}if(n===12)acc=0;}
+  if(race.state==='race'||race.state==='countdown'||race.state==='intro'){acc+=dt;let n=0;while(acc>=PH&&n<12){stepRace(PH);acc-=PH;n++;}if(n===12)acc=0;}
   const live_=race.state!=='paused'&&race.state!=='results';
   if(live_)visuals(dt);
   const vs=render(live_?dt:0);hudAll(vs);audioFrame();
