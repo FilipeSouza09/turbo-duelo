@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Turbo Duelo: corrida 3D no navegador, em tela dividida ou online com amigos.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2212%22 fill=%22%23111%22/%3E%3Cpath d=%22M10 40h44l-6-12H22z%22 fill=%22%23ff3b47%22/%3E%3Ccircle cx=%2220%22 cy=%2242%22 r=%226%22 fill=%22%23fff%22/%3E%3Ccircle cx=%2244%22 cy=%2242%22 r=%226%22 fill=%22%23fff%22/%3E%3C/svg%3E">
 <title>Turbo Duelo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1348,7 +1349,7 @@ function netHost(){if(typeof Peer==='undefined'){netMsg('O modo online não carr
   const A='ABCDEFGHJKLMNPQRSTUVWXYZ',code=[0,1,2,3].map(()=>A[Math.random()*A.length|0]).join('');netMsg('Criando a sala...');
   const peer=netMakePeer(NET_PREFIX+code.toLowerCase());NET.peer=peer;
   peer.on('open',()=>{Object.assign(NET,{on:true,host:true,code,me:'h',cfgR:{track:cfg.track,laps:cfg.laps,cpu:cfg.cpu}});
-    NET.players=[{id:'h',name:netName(),m:cfg.sel[0].m,c:cfg.sel[0].c,ready:false,slot:0}];showLobby();});
+    NET.players=[{id:'h',name:netName(),m:cfg.sel[0].m,c:cfg.sel[0].c,ready:false,slot:0}];netMsg('');showLobby();});
   peer.on('connection',conn=>{conn.on('open',()=>{if(screen==='race'||NET.players.length>=4){conn.send({t:'busy',full:NET.players.length>=4});setTimeout(()=>conn.close(),400);return;}NET.conns.set(conn.peer,conn);});
     conn.on('data',d=>netHostMsg(conn,d));conn.on('close',()=>netDrop(conn.peer));conn.on('error',()=>netDrop(conn.peer));});
   peer.on('error',e=>{if(e.type==='unavailable-id'){netHost();return;}if(!NET.on){netMsg(netFailText(e),true);netLeave(true);}});
@@ -1358,7 +1359,7 @@ function netJoin(){if(typeof Peer==='undefined'){netMsg('O modo online não carr
   netLeave(true);netMsg('Procurando a sala '+code+'...');const peer=netMakePeer();NET.peer=peer;
   NET.joinT=setTimeout(()=>{if(!NET.on){netMsg('A sala não respondeu. Confira o código e tente de novo.',true);netLeave(true);}},15000);
   peer.on('open',()=>{const conn=peer.connect(NET_PREFIX+code.toLowerCase(),{reliable:true});NET.hostConn=conn;
-    conn.on('open',()=>{clearTimeout(NET.joinT);Object.assign(NET,{on:true,host:false,code,me:peer.id});conn.send({t:'hello',name:netName(),m:cfg.sel[0].m,c:cfg.sel[0].c});});
+    conn.on('open',()=>{clearTimeout(NET.joinT);netMsg('');Object.assign(NET,{on:true,host:false,code,me:peer.id});conn.send({t:'hello',name:netName(),m:cfg.sel[0].m,c:cfg.sel[0].c});});
     conn.on('data',d=>netClientMsg(d));conn.on('close',()=>netLost());conn.on('error',()=>netLost());});
   peer.on('error',e=>{if(!NET.on){clearTimeout(NET.joinT);netMsg(netFailText(e),true);netLeave(true);}});}
 function netBroadcast(msg){for(const c of NET.conns.values())if(c.open)try{c.send(msg);}catch(e){}}
