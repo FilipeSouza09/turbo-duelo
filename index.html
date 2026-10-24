@@ -1341,7 +1341,15 @@ const SLOTC=[P1C,P2C,'#18c964','#ff8a00'];
 const NET_PREFIX='turboduelo-v1-';
 function netMsg(t,bad){const m=$('#netMsg');if(m){m.textContent=t;m.style.color=bad?'#ff6b74':'';}const l=$('#lbMsg');if(l)l.textContent=t;}
 function netName(){return ($('#n1').value.trim()||'Piloto').slice(0,12);}
-function netMakePeer(id){const opt=Object.assign({debug:0},window.__PEERCFG||{});return id?new Peer(id,opt):new Peer(opt);}
+const NET_ICE={iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302','stun:stun.cloudflare.com:3478']},
+  {urls:['turn:eu-0.turn.peerjs.com:3478','turn:us-0.turn.peerjs.com:3478'],username:'peerjs',credential:'peerjsp'},
+  {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp','turns:openrelay.metered.ca:443'],username:'openrelayproject',credential:'openrelayproject'}],sdpSemantics:'unified-plan'};
+function netMakePeer(id){const opt=Object.assign({debug:0,config:NET_ICE},window.__PEERCFG||{});return id?new Peer(id,opt):new Peer(opt);}
+const NET_BLOCK='Não deu para ligar os dois computadores. Isso costuma ser bloqueio da rede (Wi-Fi de faculdade, de empresa ou alguns roteadores). Tentem de novo ou usem outra rede, como o 4G do celular.';
+function netWatchIce(conn){let n=0;const iv=setInterval(()=>{const pc=conn.peerConnection;if(!pc){if(++n>40)clearInterval(iv);return;}clearInterval(iv);
+  pc.addEventListener('iceconnectionstatechange',()=>{const st=pc.iceConnectionState;
+    if(st==='checking'&&!NET.on)netMsg('Sala encontrada. Ligando ao computador do anfitrião...');
+    if(st==='failed'&&!NET.on){clearTimeout(NET.joinT);netMsg(NET_BLOCK,true);netLeave(true);}});},100);}
 function netFailText(e){const t=e&&e.type;if(t==='peer-unavailable')return 'Sala não encontrada. Confira o código.';
   if(t==='browser-incompatible')return 'Este navegador não suporta o modo online.';
   return 'Não foi possível conectar ao servidor de salas. Verifique a internet. Dentro do Claude o modo online é bloqueado: use o site publicado do jogo.';}
@@ -1350,15 +1358,15 @@ function netHost(){if(typeof Peer==='undefined'){netMsg('O modo online não carr
   const peer=netMakePeer(NET_PREFIX+code.toLowerCase());NET.peer=peer;
   peer.on('open',()=>{Object.assign(NET,{on:true,host:true,code,me:'h',cfgR:{track:cfg.track,laps:cfg.laps,cpu:cfg.cpu}});
     NET.players=[{id:'h',name:netName(),m:cfg.sel[0].m,c:cfg.sel[0].c,ready:false,slot:0}];netMsg('');showLobby();});
-  peer.on('connection',conn=>{conn.on('open',()=>{if(screen==='race'||NET.players.length>=4){conn.send({t:'busy',full:NET.players.length>=4});setTimeout(()=>conn.close(),400);return;}NET.conns.set(conn.peer,conn);});
+  peer.on('connection',conn=>{netWatchIce(conn);conn.on('open',()=>{if(screen==='race'||NET.players.length>=4){conn.send({t:'busy',full:NET.players.length>=4});setTimeout(()=>conn.close(),400);return;}NET.conns.set(conn.peer,conn);});
     conn.on('data',d=>netHostMsg(conn,d));conn.on('close',()=>netDrop(conn.peer));conn.on('error',()=>netDrop(conn.peer));});
   peer.on('error',e=>{if(e.type==='unavailable-id'){netHost();return;}if(!NET.on){netMsg(netFailText(e),true);netLeave(true);}});
   peer.on('disconnected',()=>{try{peer.reconnect();}catch(e){}});}
 function netJoin(){if(typeof Peer==='undefined'){netMsg('O modo online não carregou.',true);return;}
   const code=($('#netCode').value||'').trim().toUpperCase();if(code.length!==4){netMsg('Digite o código de 4 letras da sala.',true);return;}
   netLeave(true);netMsg('Procurando a sala '+code+'...');const peer=netMakePeer();NET.peer=peer;
-  NET.joinT=setTimeout(()=>{if(!NET.on){netMsg('A sala não respondeu. Confira o código e tente de novo.',true);netLeave(true);}},15000);
-  peer.on('open',()=>{const conn=peer.connect(NET_PREFIX+code.toLowerCase(),{reliable:true});NET.hostConn=conn;
+  NET.joinT=setTimeout(()=>{if(!NET.on){netMsg(NET.stage==='ice'?NET_BLOCK:'A sala não respondeu. Confira o código e se o anfitrião ainda está com a sala aberta.',true);netLeave(true);}},25000);NET.stage='server';
+  peer.on('open',()=>{netMsg('Conectado ao servidor. Procurando a sala '+code+'...');const conn=peer.connect(NET_PREFIX+code.toLowerCase(),{reliable:true});NET.hostConn=conn;NET.stage='ice';netWatchIce(conn);
     conn.on('open',()=>{clearTimeout(NET.joinT);netMsg('');Object.assign(NET,{on:true,host:false,code,me:peer.id});conn.send({t:'hello',name:netName(),m:cfg.sel[0].m,c:cfg.sel[0].c});});
     conn.on('data',d=>netClientMsg(d));conn.on('close',()=>netLost());conn.on('error',()=>netLost());});
   peer.on('error',e=>{if(!NET.on){clearTimeout(NET.joinT);netMsg(netFailText(e),true);netLeave(true);}});}
